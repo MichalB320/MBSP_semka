@@ -1,4 +1,5 @@
 import random
+import matplotlib.pyplot as plt
 
 # Parametre simulácie
 NUM_DOCTORS = 4
@@ -21,7 +22,8 @@ class Patient:
 # Funkcia simulácie
 def simulate_clinic():
     event_list = []
-    doctors_available = NUM_DOCTORS
+    doctor_busy_time = {i: 0 for i in range(NUM_DOCTORS)}
+    doctors_available = list(range(NUM_DOCTORS))
     waiting_queue = []
     total_waiting_time = 0
     treated_patients = 0
@@ -45,32 +47,47 @@ def simulate_clinic():
         current_time = event_time
 
         if event_type == "arrival":
-            if doctors_available > 0:
-                doctors_available -= 1
-                event_list.append(("release_doctor", current_time + patient.treatment_time, None))
+            if doctors_available:
+                doctor = doctors_available.pop(0)
+                doctor_busy_time[doctor] += patient.treatment_time
+                event_list.append(("release_doctor", current_time + patient.treatment_time, doctor))
                 event_list.sort(key=lambda x: x[1])
             else:
                 waiting_queue.append(patient)
 
         elif event_type == "release_doctor":
-            doctors_available += 1
+            doctor = patient  # Tu je lekár, ktorý sa uvoľnil
+            doctors_available.append(doctor)
             if waiting_queue:
                 p = waiting_queue.pop(0)
                 waiting_time = current_time - p.arrival_time
                 total_waiting_time += waiting_time
                 treated_patients += 1
-                doctors_available -= 1
-                event_list.append(("release_doctor", current_time + p.treatment_time, None))
+                doctor_busy_time[doctor] += p.treatment_time
+                doctors_available.remove(doctor)
+                event_list.append(("release_doctor", current_time + p.treatment_time, doctor))
                 event_list.sort(key=lambda x: x[1])
 
     avg_waiting_time = total_waiting_time / max(1, treated_patients)
-    return avg_waiting_time
+    doctor_utilization = {doc: (busy_time / END_TIME) * 100 for doc, busy_time in doctor_busy_time.items()}
+
+    return avg_waiting_time, doctor_utilization
 
 # Spustenie replikácií simulácie
+doctor_utilization_aggregated = {i: [] for i in range(NUM_DOCTORS)}
 results = []
+
 for _ in range(REPLICATIONS):
-    results.append(simulate_clinic())
+    avg_waiting_time, doctor_utilization = simulate_clinic()
+    results.append(avg_waiting_time)
+    for doctor, utilization in doctor_utilization.items():
+        doctor_utilization_aggregated[doctor].append(utilization)
 
 average_waiting_time = sum(results) / len(results)
+doctor_average_utilization = {doc: sum(utilizations) / len(utilizations) for doc, utilizations in
+                              doctor_utilization_aggregated.items()}
 
 print(f"Priemerný čas čakania po {REPLICATIONS} replikáciách: {average_waiting_time:.2f} minút")
+print("Vyťaženosť doktorov:")
+for doc, utilization in doctor_average_utilization.items():
+    print(f"Doktor {doc + 1}: {utilization:.2f}%")
