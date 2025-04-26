@@ -25,6 +25,8 @@ def simulate_clinic():
     doctor_busy_time = {i: 0 for i in range(NUM_DOCTORS)}
     doctors_available = list(range(NUM_DOCTORS))
     waiting_queue = []
+    queue_size_over_time = []
+    time_stamps = []
     total_waiting_time = 0
     treated_patients = 0
 
@@ -46,6 +48,9 @@ def simulate_clinic():
         event_type, event_time, patient = event_list.pop(0)
         current_time = event_time
 
+        time_stamps.append(current_time)
+        queue_size_over_time.append(len(waiting_queue))
+
         if event_type == "arrival":
             if doctors_available:
                 doctor = doctors_available.pop(0)
@@ -56,7 +61,7 @@ def simulate_clinic():
                 waiting_queue.append(patient)
 
         elif event_type == "release_doctor":
-            doctor = patient  # Tu je lekár, ktorý sa uvoľnil
+            doctor = patient
             doctors_available.append(doctor)
             if waiting_queue:
                 p = waiting_queue.pop(0)
@@ -68,24 +73,35 @@ def simulate_clinic():
                 event_list.append(("release_doctor", current_time + p.treatment_time, doctor))
                 event_list.sort(key=lambda x: x[1])
 
+        time_stamps.append(current_time)
+        queue_size_over_time.append(len(waiting_queue))
+
     avg_waiting_time = total_waiting_time / max(1, treated_patients)
     doctor_utilization = {doc: (busy_time / END_TIME) * 100 for doc, busy_time in doctor_busy_time.items()}
 
-    return avg_waiting_time, doctor_utilization
+    return avg_waiting_time, doctor_utilization, time_stamps, queue_size_over_time
 
 # Spustenie replikácií simulácie
+total_waiting_time = []
 doctor_utilization_aggregated = {i: [] for i in range(NUM_DOCTORS)}
-results = []
 
 for _ in range(REPLICATIONS):
-    avg_waiting_time, doctor_utilization = simulate_clinic()
-    results.append(avg_waiting_time)
-    for doctor, utilization in doctor_utilization.items():
-        doctor_utilization_aggregated[doctor].append(utilization)
+    avg_waiting_time, doctor_utilization, time_stamps, queue_sizes = simulate_clinic()
+    total_waiting_time.append(avg_waiting_time)
+    for doc, utilization in doctor_utilization.items():
+        doctor_utilization_aggregated[doc].append(utilization)
 
-average_waiting_time = sum(results) / len(results)
-doctor_average_utilization = {doc: sum(utilizations) / len(utilizations) for doc, utilizations in
-                              doctor_utilization_aggregated.items()}
+average_waiting_time = sum(total_waiting_time) / len(total_waiting_time)
+doctor_average_utilization = {doc: sum(utilizations) / len(utilizations) for doc, utilizations in doctor_utilization_aggregated.items()}
+
+# Vykreslenie grafu
+plt.figure(figsize=(10, 5))
+plt.plot(time_stamps, queue_sizes, marker='o', linestyle='-')
+plt.xlabel("Čas (min)")
+plt.ylabel("Počet pacientov v rade")
+plt.title("Závislosť počtu pacientov v rade od času")
+plt.grid()
+plt.show()
 
 print(f"Priemerný čas čakania po {REPLICATIONS} replikáciách: {average_waiting_time:.2f} minút")
 print("Vyťaženosť doktorov:")
