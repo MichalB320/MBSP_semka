@@ -10,14 +10,18 @@ TREATMENT_TIME_COMPLEX = (40, 60)
 COMPLEX_CASE_PROB = 0.2
 APPOINTMENT_VARIATION = (-10, 10)
 END_TIME = SHIFT_HOURS * 60  # Čas v minútach
-REPLICATIONS = 700  # Počet replikácií simulácie
+REPLICATIONS = 1000  # Počet replikácií simulácie
 
 # Trieda pacienta
 class Patient:
     def __init__(self, arrival_time, urgent=False):
         self.arrival_time = arrival_time
         self.urgent = urgent
-        self.treatment_time = random.randint(*TREATMENT_TIME_COMPLEX) if random.random() < COMPLEX_CASE_PROB else random.randint(*TREATMENT_TIME_NORMAL)
+        if random.random() < COMPLEX_CASE_PROB:
+            self.treatment_time = random.randint(*TREATMENT_TIME_COMPLEX)
+        else:
+            self.treatment_time = random.randint(*TREATMENT_TIME_NORMAL)
+        #self.treatment_time = random.randint(*TREATMENT_TIME_COMPLEX) if random.random() < COMPLEX_CASE_PROB else random.randint(*TREATMENT_TIME_NORMAL)
 
 # Funkcia simulácie
 def simulate_clinic():
@@ -31,8 +35,22 @@ def simulate_clinic():
     treated_patients = 0
 
     # Generovanie pacientov
-    appointment_times = [random.randint(0, END_TIME) + random.randint(*APPOINTMENT_VARIATION) for _ in range(30)]
-    acute_cases = [random.randint(0, END_TIME) for _ in range(random.randint(*ACUTE_CASES_PER_DAY))]
+    #appointment_times = [random.randint(0, END_TIME) + random.randint(*APPOINTMENT_VARIATION) for _ in range(48)]
+    appointment_times = []
+    for t in range(0, END_TIME - 3 * 60, 45):
+        for _ in range(3):
+            appointment_times.append(t)
+
+    for t in range(3 * 60, END_TIME, 25):
+        for _ in range(3):
+            appointment_times.append(t)
+
+    #acute_cases = [random.randint(0, END_TIME) for _ in range(random.randint(*ACUTE_CASES_PER_DAY))]
+
+    acute_cases = []
+    for _ in range(random.randint(*ACUTE_CASES_PER_DAY)):
+        arrival_time = random.randint(0, END_TIME - 3 * 60)
+        acute_cases.append(arrival_time)
 
     for time in appointment_times:
         event_list.append(("arrival", time, Patient(time)))
